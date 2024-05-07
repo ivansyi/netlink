@@ -42,6 +42,16 @@ type IfreqSlave struct {
 	Slave [unix.IFNAMSIZ]byte
 }
 
+type IfSlave struct {
+	//typedef struct ifslave {
+	ID       uint32 /* Used as an IN param to the BOND_SLAVE_INFO_QUERY ioctl */
+	Name     [unix.IFNAMSIZ]byte
+	Link     int8
+	State    int8   //__s8    state
+	Failures uint32 //__u32   link_failure_count
+	//} ifslave;
+}
+
 // Ifreq is a struct for ioctl ethernet manipulation syscalls.
 type Ifreq struct {
 	Name [unix.IFNAMSIZ]byte

@@ -2876,6 +2876,38 @@ func parseXfrmiData(link Link, data []syscall.NetlinkRouteAttr) {
 	}
 }
 
+// LinkGetBondSlave add slave to bond link via ioctl interface.
+func LinkGetBondSlave(master *Bond) ([]IfSlave, error) {
+	var slaveList = []IfSlave{}
+	fd, err := getSocketUDP()
+	if err != nil {
+		return slaveList, err
+	}
+	defer syscall.Close(fd)
+
+	var i = uint32(0)
+	for {
+		var ifreq = Ifreq{}
+		var ifInfo IfSlave
+
+		ifInfo.ID = i
+		copy(ifreq.Name[:unix.IFNAMSIZ-1], master.Attrs().Name)
+		ifreq.Data = uintptr(unsafe.Pointer(&ifInfo))
+		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), unix.SIOCBONDSLAVEINFOQUERY, uintptr(unsafe.Pointer(&ifreq)))
+		if errno == unix.ENODEV {
+			break
+		} else if errno != 0 {
+			return slaveList, fmt.Errorf("Failed to get %dth slave info of %s, errno=%v", i, master.Attrs().Name, errno)
+		} else {
+			//fmt.Printf("ID: %d, Name: %s\n", ifInfo.ID, ifInfo.Name)
+			slaveList = append(slaveList, ifInfo)
+		}
+		i += 1
+	}
+
+	return slaveList, nil
+}
+
 // LinkSetBondSlave add slave to bond link via ioctl interface.
 func LinkSetBondSlave(link Link, master *Bond) error {
 	fd, err := getSocketUDP()
@@ -2889,6 +2921,23 @@ func LinkSetBondSlave(link Link, master *Bond) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), unix.SIOCBONDENSLAVE, uintptr(unsafe.Pointer(ifreq)))
 	if errno != 0 {
 		return fmt.Errorf("Failed to enslave %q to %q, errno=%v", link.Attrs().Name, master.Attrs().Name, errno)
+	}
+	return nil
+}
+
+// LinkSetBondSlave add slave to bond link via ioctl interface.
+func LinkDelBondSlave(link Link, master *Bond) error {
+	fd, err := getSocketUDP()
+	if err != nil {
+		return err
+	}
+	defer syscall.Close(fd)
+
+	ifreq := newIocltSlaveReq(link.Attrs().Name, master.Attrs().Name)
+
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), unix.SIOCBONDRELEASE, uintptr(unsafe.Pointer(ifreq)))
+	if errno != 0 {
+		return fmt.Errorf("Failed to release %q from %q, errno=%v", link.Attrs().Name, master.Attrs().Name, errno)
 	}
 	return nil
 }
