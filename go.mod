@@ -7,4 +7,4 @@ require (
 	golang.org/x/sys v0.0.0-20190606203320-7fc4e5ec1444
 )
 
-replace github.com/vishvananda/netlink => github.com/ivansyi/netlink v1.1.0-sg
+replace github.com/vishvananda/netlink => github.com/ivansyi/netlink v1.1.1
